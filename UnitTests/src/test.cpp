@@ -99,16 +99,23 @@ template <typename FloatType,
     }
 }
 
-TEST(SquareTest, SampleTest)
+template<typename WaveType,
+         typename = std::enable_if_t<std::is_convertible_v<WaveType*, osc::ComplexWave<FLOAT_T>*>>>
+void CreateComplexWaveInstructions(std::vector<WaveType>& _vWaves)
 {
-    std::vector<osc::SquareWave<FLOAT_T>> vSquares;
-    vSquares.reserve(uNumComplexCombinations);
+    _vWaves.reserve(uNumComplexCombinations);
     for (auto& sr : vSampleRates)
         for (auto& f : vFrequencies)
             for (auto& a : vAmplitudes)
                 for (auto& n : vNumHarmonics)
-                    vSquares.push_back({ sr, f, a , n});
+                    _vWaves.push_back(std::make_unique<WaveType>({sr, f, a , n }));
+}
 
+TEST(SquareTest, SampleTest)
+{
+    std::vector<osc::SquareWave<FLOAT_T>> vSquares;
+    CreateComplexWaveInstructions(vSquares);
+    
     for (auto& s : vSquares)
         CheckSquares(s);
 }
