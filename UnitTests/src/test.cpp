@@ -14,6 +14,15 @@ size_t uNumSineCombinations{ vSampleRates.size() *
 std::vector<size_t> vNumHarmonics{ 2, 4, 6, 8, 10 };
 size_t uNumComplexCombinations{ uNumSineCombinations * vNumHarmonics.size() };
 
+template<typename FloatType>
+struct Tone
+{
+    FloatType phase = 0.0;
+    FloatType frequency = 0.0;
+    FloatType phaseDiff = 0.0;
+    FloatType amplitude = 0.0;
+};
+
 void AddRandomFrequencies(std::vector<FLOAT_T>& vFreqs)
 {
     std::default_random_engine rng;
@@ -25,7 +34,7 @@ void AddRandomFrequencies(std::vector<FLOAT_T>& vFreqs)
 
 template <typename FloatType,
     typename = std::enable_if_t<std::is_same_v<float, FloatType>
-    || std::is_same_v<double, FloatType>>>
+                                || std::is_same_v<double, FloatType>>>
     void CheckSine(osc::SineWave<FloatType> _sine)
 {
     FloatType phase{ 0.0 };
@@ -57,7 +66,7 @@ TEST(SineTest, SampleTest)
 
 template <typename FloatType,
     typename = std::enable_if_t<std::is_same_v<float, FloatType>
-    || std::is_same_v<double, FloatType>>>
+                                || std::is_same_v<double, FloatType>>>
     void CheckSquares(osc::SquareWave<FloatType> _square)
 {
     struct Tone
@@ -108,14 +117,62 @@ void CreateComplexWaveInstructions(std::vector<WaveType>& _vWaves)
         for (auto& f : vFrequencies)
             for (auto& a : vAmplitudes)
                 for (auto& n : vNumHarmonics)
-                    _vWaves.push_back(std::make_unique<WaveType>({sr, f, a , n }));
+                    _vWaves.push_back({ sr, f, a , n });
+}
+
+template <typename FloatType,
+    typename F,
+    typename = std::enable_if_t<std::is_same_v<float, FloatType>
+    || std::is_same_v<double, FloatType>
+    && std::is_invocable_v<F(std::vector<Tone<FloatType>>&, osc::ComplexWave<FloatType>&), std::vector<Tone<FloatType>>&, osc::ComplexWave<FLOAT_T>&>>>
+    void CheckComplex(osc::SquareWave<FloatType> _square, F& _func)
+{
+    const size_t uNumHarmonics{ _square.GetNumHarmonics() };
+    std::vector<Tone<FLOAT_T>> vWaveComponents{ uNumHarmonics + 1 };
+
+    vWaveComponents.front().frequency = _square.GetFrequency();
+    vWaveComponents.front().phaseDiff = 2.0 * M_PI * _square.GetFrequency() / _square.GetSampleRate();
+    vWaveComponents.front().amplitude = _square.GetAmplitude();
+    for (auto it{ vWaveComponents.begin() + 1 }; it != vWaveComponents.end(); ++it)
+    {
+        _func(vWaveComponents, _square);
+    }
+
+    for (size_t i{ 0 }; i < NUM_SAMPLES_TEST; ++i)
+    {
+        FloatType test{ _square.NextSample() };
+        FloatType control{ 0.0 };
+
+        for (auto& wc : vWaveComponents)
+        {
+            control += wc.amplitude * sin(wc.phase);
+            wc.phase += wc.phaseDiff;
+            if (wc.phase > 2.0 * M_PI)
+                wc.phase -= 2.0 * M_PI;
+        }
+
+        EXPECT_TRUE(test == control);
+    }
 }
 
 TEST(SquareTest, SampleTest)
 {
     std::vector<osc::SquareWave<FLOAT_T>> vSquares;
     CreateComplexWaveInstructions(vSquares);
+
+    auto squareInstructions = [&](std::vector<Tone<FLOAT_T>>& _vSquareComponents,
+                                  osc::SquareWave<FLOAT_T>& _square)
+    {
+        for (auto it{ _vSquareComponents.begin() + 1 }; it != _vSquareComponents.end(); ++it)
+        {
+            it->frequency = (it - 1)->frequency + 2.0 * _square.GetFrequency();
+            it->phaseDiff = 2 * M_PI * it->frequency / _square.GetSampleRate();
+            it->amplitude = _square.GetAmplitude() /
+                            ((FLOAT_T)std::distance(_vSquareComponents.begin(), it) * 2.0 + 1.0);
+        }
+    };
     
     for (auto& s : vSquares)
-        CheckSquares(s);
+        CheckComplex(s, squareInstructions);
 }
+

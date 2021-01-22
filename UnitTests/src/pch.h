@@ -11,4 +11,5 @@
 #include <string>
 #include <random>
 #include <chrono>
+#include <type_traits>
 #include "Oscillator.h"

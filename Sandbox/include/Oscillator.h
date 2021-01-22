@@ -133,14 +133,11 @@ namespace osc
                     size_t _uNumHarmonics = 10) :
             m_SampleRate(_sampleRate),
             m_Amplitude(_amplitude),
-            m_Frequency(_frequency)
-        {
-            SetNumHarmonics(_uNumHarmonics);
-        };
+            m_Frequency(_frequency) {};
 
         virtual ~ComplexWave() = default;
 
-        virtual void SetFrequency() = 0;
+        virtual void SetFrequency(const FloatType _frequency) = 0;
         FloatType GetFrequency() const { return m_vSines.front().GetFrequency(); };
         void MultiplyFrequency(const FloatType _multipler)
         {
@@ -175,17 +172,11 @@ namespace osc
         // Returns:
         //     void
         // -------------------------------------------------------------------------------
-        void SetNumHarmonics(size_t _uNumHarmonics)
+        virtual void SetNumHarmonics(size_t _uNumHarmonics)
         {
             const size_t uNumTones{ _uNumHarmonics + 1 };
             const size_t uOldSize{ m_vSines.size() };
             m_vSines.resize(uNumTones, m_SampleRate);
-
-            if (uNumTones > uOldSize)
-            {
-                CalcAmplitudes();
-                SetFrequency(m_Frequency);
-            }
         }
 
         size_t GetNumHarmonics() const { return m_vSines.size() - 1; };
@@ -211,7 +202,7 @@ namespace osc
 
     public:
         SquareWave() = delete;
-
+        
         // -------------------------------------------------------------------------------
         // Constructor. Initialises m_SampleRate and the number of harmonics, and can
         // optionally be used to set m_Frequency and m_Amplitude.
@@ -226,10 +217,13 @@ namespace osc
                    FloatType _frequency = 0.0,
                    FloatType _amplitude = 1.0,
                    size_t _uNumHarmonics = 10) :
-            ComplexWave(_sampleRate,
+            ComplexWave<FloatType>(_sampleRate,
                         _frequency,
                         _amplitude,
-                        _uNumHarmonics) {};
+                        _uNumHarmonics)
+        {
+            SetNumHarmonics(_uNumHarmonics);
+        };
 
     public:
         // -------------------------------------------------------------------------------
@@ -245,13 +239,13 @@ namespace osc
         // -------------------------------------------------------------------------------
         void SetFrequency(const FloatType _frequency) override
         {
-            if (m_vSines.empty()) return;
+            if (this->m_vSines.empty()) return;
 
-            m_vSines.front().SetFrequency(_frequency);
+            this->m_vSines.front().SetFrequency(_frequency);
 
             FloatType prevFrequency{ _frequency };
 
-            for (auto it{ m_vSines.begin() + 1 }; it != m_vSines.end(); ++it)
+            for (auto it{ this->m_vSines.begin() + 1 }; it != this->m_vSines.end(); ++it)
             {
                 it->SetFrequency(prevFrequency + 2 * _frequency);
                 prevFrequency = it->GetFrequency();
@@ -260,8 +254,21 @@ namespace osc
 
         void SetAmplitude() override
         {
-            for (FloatType i{ 0 }; i < m_vSines.size(); ++i)
-                m_vSines.at(i).SetAmplitude(m_Amplitude / (1 + (i * 2)));
+            for (FloatType i{ 0 }; i < this->m_vSines.size(); ++i)
+                this->m_vSines.at(i).SetAmplitude(this->m_Amplitude / (1 + (i * 2)));
+        }
+
+        void SetNumHarmonics(size_t _uNumHarmonics)
+        {
+            const size_t uNumTones{ _uNumHarmonics + 1 };
+            const size_t uOldSize{ this->m_vSines.size() };
+            this->m_vSines.resize(uNumTones, this->m_SampleRate);
+
+            if (uNumTones > uOldSize)
+            {
+                SetAmplitude();
+                SetFrequency(this->m_Frequency);
+            }
         }
     };
 
