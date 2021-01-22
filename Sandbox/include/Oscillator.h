@@ -138,6 +138,8 @@ namespace osc
             SetNumHarmonics(_uNumHarmonics);
         };
 
+        virtual ~ComplexWave() = default;
+
         virtual void SetFrequency() = 0;
         FloatType GetFrequency() const { return m_vSines.front().GetFrequency(); };
         void MultiplyFrequency(const FloatType _multipler)
@@ -190,19 +192,17 @@ namespace osc
         FloatType GetAmplitude() const { return m_Amplitude; };
         FloatType GetSampleRate() const { return m_SampleRate; };
 
-    private:
-        virtual void CalcAmplitudes() = 0;
+        virtual void SetAmplitude() = 0;
 
     protected:
         const FloatType m_SampleRate;
         FloatType m_Frequency;
         FloatType m_Amplitude;
         std::vector<SineWave<FloatType>> m_vSines;
-    private:
     };
 
     template<typename FloatType>
-    class SquareWave
+    class SquareWave : public ComplexWave<FloatType>
     {
     public:
         static_assert(std::is_same_v<float, FloatType>
@@ -226,12 +226,10 @@ namespace osc
                    FloatType _frequency = 0.0,
                    FloatType _amplitude = 1.0,
                    size_t _uNumHarmonics = 10) :
-            m_SampleRate(_sampleRate),
-            m_Amplitude(_amplitude),
-            m_Frequency(_frequency)
-        {
-            SetNumHarmonics(_uNumHarmonics);
-        };
+            ComplexWave(_sampleRate,
+                        _frequency,
+                        _amplitude,
+                        _uNumHarmonics) {};
 
     public:
         // -------------------------------------------------------------------------------
@@ -245,7 +243,7 @@ namespace osc
         // Returns:
         //     void
         // -------------------------------------------------------------------------------
-        void SetFrequency(const FloatType _frequency)
+        void SetFrequency(const FloatType _frequency) override
         {
             if (m_vSines.empty()) return;
 
@@ -260,70 +258,11 @@ namespace osc
             }
         }
 
-        FloatType GetFrequency() const { return m_vSines.front().GetFrequency(); };
-
-        void MultiplyFrequency(const FloatType _multipler)
-        {
-            for (auto& s : m_vSines)
-                s.MultiplyFrequency(_multipler);
-        }
-
-        // -------------------------------------------------------------------------------
-        // Sums the sample values from calling NextSample on the SineWaves inside
-        // m_vSines;
-        //
-        // Returns:
-        //     the sum of the sample values
-        // -------------------------------------------------------------------------------
-        FloatType NextSample()
-        {
-            FloatType sample{ 0.0 };
-            for (auto& s : m_vSines)
-                sample += s.NextSample();
-
-            return sample;
-        }
-
-        // -------------------------------------------------------------------------------
-        // Sets the number of harmonics produced. If this is larger than the previous
-        // number then the new SineWave objects have the correct amplitude and frequency
-        // assigned.
-        //
-        // Arguments:
-        //     _uNumHarmonics - the number of harmonics additional to the fundamental
-        //
-        // Returns:
-        //     void
-        // -------------------------------------------------------------------------------
-        void SetNumHarmonics(size_t _uNumHarmonics)
-        {
-            const size_t uNumTones{ _uNumHarmonics + 1 };
-            const size_t uOldSize{ m_vSines.size() };
-            m_vSines.resize(uNumTones, m_SampleRate);
-
-            if (uNumTones > uOldSize)
-            {
-                CalcAmplitudes();
-                SetFrequency(m_Frequency);
-            }
-        }
-
-        size_t GetNumHarmonics() const { return m_vSines.size() - 1; };
-        FloatType GetAmplitude() const { return m_Amplitude; };
-        FloatType GetSampleRate() const { return m_SampleRate; };
-
-    private:
-        void CalcAmplitudes()
+        void SetAmplitude() override
         {
             for (FloatType i{ 0 }; i < m_vSines.size(); ++i)
                 m_vSines.at(i).SetAmplitude(m_Amplitude / (1 + (i * 2)));
         }
-
-    private:
-        const FloatType m_SampleRate;
-        FloatType m_Frequency;
-        FloatType m_Amplitude;
-        std::vector<SineWave<FloatType>> m_vSines;
     };
 
 }
