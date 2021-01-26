@@ -218,9 +218,9 @@ namespace osc
                    FloatType _amplitude = 1.0,
                    size_t _uNumHarmonics = 10) :
             ComplexWave<FloatType>(_sampleRate,
-                        _frequency,
-                        _amplitude,
-                        _uNumHarmonics)
+                                   _frequency,
+                                   _amplitude,
+                                   _uNumHarmonics)
         {
             SetNumHarmonics(_uNumHarmonics);
         };
