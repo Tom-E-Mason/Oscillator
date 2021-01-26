@@ -60,6 +60,7 @@
     <IntDir>$(DefaultIntDir)</IntDir>
   </PropertyGroup>
   <ItemGroup>
+    <ClInclude Include="src\OscillatorHelpers.h" />
     <ClInclude Include="src\pch.h" />
   </ItemGroup>
   <ItemGroup>
