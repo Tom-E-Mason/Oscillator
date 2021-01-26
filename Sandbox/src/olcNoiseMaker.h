@@ -63,7 +63,6 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
-using namespace std;
 
 #include <Windows.h>
 
@@ -73,7 +72,7 @@ template<class T>
 class olcNoiseMaker
 {
 public:
-	olcNoiseMaker(wstring sOutputDevice, unsigned int nSampleRate = 44100, unsigned int nChannels = 1, unsigned int nBlocks = 8, unsigned int nBlockSamples = 512)
+	olcNoiseMaker(std::wstring sOutputDevice, unsigned int nSampleRate = 44100, unsigned int nChannels = 1, unsigned int nBlocks = 8, unsigned int nBlockSamples = 512)
 	{
 		Create(sOutputDevice, nSampleRate, nChannels, nBlocks, nBlockSamples);
 	}
@@ -83,7 +82,7 @@ public:
 		Destroy();
 	}
 
-	bool Create(wstring sOutputDevice, unsigned int nSampleRate = 44100, unsigned int nChannels = 1, unsigned int nBlocks = 8, unsigned int nBlockSamples = 512)
+	bool Create(std::wstring sOutputDevice, unsigned int nSampleRate = 44100, unsigned int nChannels = 1, unsigned int nBlocks = 8, unsigned int nBlockSamples = 512)
 	{
 		m_bReady = false;
 		m_nSampleRate = nSampleRate;
@@ -98,7 +97,7 @@ public:
 		m_userFunction = nullptr;
 
 		// Validate device
-		vector<wstring> devices = Enumerate();
+		std::vector<std::wstring> devices = Enumerate();
 		auto d = std::find(devices.begin(), devices.end(), sOutputDevice);
 		if (d != devices.end())
 		{
@@ -138,10 +137,10 @@ public:
 
 		m_bReady = true;
 
-		m_thread = thread(&olcNoiseMaker::MainThread, this);
+		m_thread = std::thread(&olcNoiseMaker::MainThread, this);
 
 		// Start the ball rolling
-		unique_lock<mutex> lm(m_muxBlockNotZero);
+		std::unique_lock<std::mutex> lm(m_muxBlockNotZero);
 		m_cvBlockNotZero.notify_one();
 
 		return true;
@@ -172,10 +171,10 @@ public:
 	
 
 public:
-	static vector<wstring> Enumerate()
+	static std::vector<std::wstring> Enumerate()
 	{
 		int nDeviceCount = waveOutGetNumDevs();
-		vector<wstring> sDevices;
+		std::vector<std::wstring> sDevices;
 		WAVEOUTCAPS woc;
 		for (int n = 0; n < nDeviceCount; n++)
 			if (!waveOutGetDevCaps(n, &woc, sizeof(WAVEOUTCAPS)))
@@ -210,13 +209,13 @@ private:
 	WAVEHDR *m_pWaveHeaders;
 	HWAVEOUT m_hwDevice;
 
-	thread m_thread;
-	atomic<bool> m_bReady;
-	atomic<unsigned int> m_nBlockFree;
-	condition_variable m_cvBlockNotZero;
-	mutex m_muxBlockNotZero;
+	std::thread m_thread;
+	std::atomic<bool> m_bReady;
+	std::atomic<unsigned int> m_nBlockFree;
+	std::condition_variable m_cvBlockNotZero;
+	std::mutex m_muxBlockNotZero;
 
-	atomic<double> m_dGlobalTime;
+	std::atomic<double> m_dGlobalTime;
 
 	// Handler for soundcard request for more data
 	void waveOutProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD dwParam1, DWORD dwParam2)
@@ -224,7 +223,7 @@ private:
 		if (uMsg != WOM_DONE) return;
 
 		m_nBlockFree++;
-		unique_lock<mutex> lm(m_muxBlockNotZero);
+		std::unique_lock<std::mutex> lm(m_muxBlockNotZero);
 		m_cvBlockNotZero.notify_one();
 	}
 
@@ -253,7 +252,7 @@ private:
 			// Wait for block to become available
 			if (m_nBlockFree == 0)
 			{
-				unique_lock<mutex> lm(m_muxBlockNotZero);
+				std::unique_lock<std::mutex> lm(m_muxBlockNotZero);
 				m_cvBlockNotZero.wait(lm);
 			}
 

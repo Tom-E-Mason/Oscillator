@@ -1,17 +1,18 @@
 
 #include <fstream>
+#include <iostream>
 
 #include "olcNoiseMaker.h"
 #include "Oscillator.h"
 
 double dSampleRate = 44100.0;
-double dFreq{ 10 };
+double dFreq{ 1000 };
 //static osc::SquareWave<double> s(dSampleRate, dFreq, 1.0, 10);
 static osc::SineWave<double> s(dSampleRate, dFreq, 1.0);
 
 double Next(double)
 {
-    s.MultiplyFrequency(1.00001);
+    //s.MultiplyFrequency(1.00001);
     return s.NextSample();
 }
 
@@ -36,7 +37,7 @@ int main()
     auto devs{ olcNoiseMaker<short>::Enumerate() };
     olcNoiseMaker<short> nm(devs[0]);
 
-    PrintWave((size_t)dSampleRate);
+    //PrintWave((size_t)dSampleRate);
 
     nm.SetUserFunction(Next);
 
