@@ -23,5 +23,8 @@
     <ClInclude Include="include\Oscillator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\olcNoiseMaker.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
