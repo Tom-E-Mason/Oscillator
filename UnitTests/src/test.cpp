@@ -22,18 +22,6 @@ TEST(SquareTest, SampleTest)
     std::vector<osc::SquareWave<FLOAT_T>> vSquares;
     CreateComplexWaveInstructions(vSquares);
 
-    auto squareInstructions = [](std::vector<Tone<FLOAT_T>>& _vSquareComponents,
-                                 osc::ComplexWave<FLOAT_T>& _square)
-    {
-        for (auto it{ _vSquareComponents.begin() + 1 }; it != _vSquareComponents.end(); ++it)
-        {
-            it->frequency = (it - 1)->frequency + 2.0 * _square.GetFrequency();
-            it->phaseDiff = 2 * M_PI * it->frequency / _square.GetSampleRate();
-            it->amplitude = _square.GetAmplitude() /
-                            ((FLOAT_T)std::distance(_vSquareComponents.begin(), it) * 2.0 + 1.0);
-        }
-    };
-    
     for (auto& s : vSquares)
-        CheckComplex(s, squareInstructions);
+        CheckComplex(s, SquareInstructions);
 }

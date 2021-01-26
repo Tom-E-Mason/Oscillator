@@ -89,11 +89,7 @@ template <typename FloatType,
 template <typename FloatType,
           typename F,
           typename = std::enable_if_t<std::is_same_v<float, FloatType>
-                                      || std::is_same_v<double, FloatType>
-                                      && std::is_invocable_v<F(std::vector<Tone<FloatType>>&,
-                                                               osc::ComplexWave<FloatType>&),
-                                                               std::vector<Tone<FloatType>>&,
-                                                               osc::ComplexWave<FLOAT_T>&>>>
+                                      || std::is_same_v<double, FloatType>>>
     void CheckComplex(osc::ComplexWave<FloatType>& _complex, F& _func)
 {
     const size_t uNumHarmonics{ _complex.GetNumHarmonics() };
@@ -161,4 +157,16 @@ FloatType ComplexWaveNextSample(std::vector<Tone<FloatType>>& _vWaveComponents)
     }
 
     return sample;
+}
+
+void SquareInstructions(std::vector<Tone<FLOAT_T>>& _vSquareComponents,
+                        osc::ComplexWave<FLOAT_T>& _square)
+{
+    for (auto it{ _vSquareComponents.begin() + 1 }; it != _vSquareComponents.end(); ++it)
+    {
+        it->frequency = (it - 1)->frequency + 2.0 * _square.GetFrequency();
+        it->phaseDiff = 2 * M_PI * it->frequency / _square.GetSampleRate();
+        it->amplitude = _square.GetAmplitude() /
+            ((FLOAT_T)std::distance(_vSquareComponents.begin(), it) * 2.0 + 1.0);
+    }
 }
