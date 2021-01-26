@@ -107,15 +107,15 @@ namespace osc
     };
 
     template<typename FloatType>
-    class SquareWave
+    class ComplexWave
     {
     public:
         static_assert(std::is_same_v<float, FloatType>
                       || std::is_same_v<double, FloatType>,
-            "SquareWave class template argument must be of type float or double");
+            "ComplexWave class template argument must be of type float or double");
 
     public:
-        SquareWave() = delete;
+        ComplexWave() = delete;
 
         // -------------------------------------------------------------------------------
         // Constructor. Initialises m_SampleRate and the number of harmonics, and can
@@ -123,50 +123,22 @@ namespace osc
         //
         // Arguments:
         //     _sampleRate    - audio sample rate in Hz
-        //     _uNumHarmonics - number of sine waves used to create the square wave
+        //     _uNumHarmonics - number of sine waves used to create the complex wave
         //     _frequency     - frequency of sine tone produced
         //     _amplitude     - amplitude of sine tone produced
         // -------------------------------------------------------------------------------
-        SquareWave(FloatType _sampleRate,
-                   FloatType _frequency = 0.0,
-                   FloatType _amplitude = 1.0,
-                   size_t _uNumHarmonics = 10) :
+        ComplexWave(FloatType _sampleRate,
+                    FloatType _frequency = 0.0,
+                    FloatType _amplitude = 1.0,
+                    size_t _uNumHarmonics = 10) :
             m_SampleRate(_sampleRate),
             m_Amplitude(_amplitude),
-            m_Frequency(_frequency)
-        {
-            SetNumHarmonics(_uNumHarmonics);
-        };
+            m_Frequency(_frequency) {};
 
-    public:
-        // -------------------------------------------------------------------------------
-        // Sets the frequency for the fundamental and each harmonic. For a square wave
-        // this is odd harmonics of the fundamental frequency. The fundamental is set, and
-        // then the remaining harmonics are looped through.
-        //
-        // Arguments:
-        //     _frequency  - fundamental frequency of square wave produced
-        //
-        // Returns:
-        //     void
-        // -------------------------------------------------------------------------------
-        void SetFrequency(const FloatType _frequency)
-        {
-            if (m_vSines.empty()) return;
+        virtual ~ComplexWave() = default;
 
-            m_vSines.front().SetFrequency(_frequency);
-
-            FloatType prevFrequency{ _frequency };
-
-            for (auto it{ m_vSines.begin() + 1 }; it != m_vSines.end(); ++it)
-            {
-                it->SetFrequency(prevFrequency + 2 * _frequency);
-                prevFrequency = it->GetFrequency();
-            }
-        }
-
+        virtual void SetFrequency(const FloatType _frequency) = 0;
         FloatType GetFrequency() const { return m_vSines.front().GetFrequency(); };
-
         void MultiplyFrequency(const FloatType _multipler)
         {
             for (auto& s : m_vSines)
@@ -200,35 +172,104 @@ namespace osc
         // Returns:
         //     void
         // -------------------------------------------------------------------------------
-        void SetNumHarmonics(size_t _uNumHarmonics)
+        virtual void SetNumHarmonics(size_t _uNumHarmonics)
         {
             const size_t uNumTones{ _uNumHarmonics + 1 };
             const size_t uOldSize{ m_vSines.size() };
             m_vSines.resize(uNumTones, m_SampleRate);
-
-            if (uNumTones > uOldSize)
-            {
-                CalcAmplitudes();
-                SetFrequency(m_Frequency);
-            }
         }
 
         size_t GetNumHarmonics() const { return m_vSines.size() - 1; };
         FloatType GetAmplitude() const { return m_Amplitude; };
         FloatType GetSampleRate() const { return m_SampleRate; };
 
-    private:
-        void CalcAmplitudes()
-        {
-            for (FloatType i{ 0 }; i < m_vSines.size(); ++i)
-                m_vSines.at(i).SetAmplitude(m_Amplitude / (1 + (i * 2)));
-        }
+        virtual void SetAmplitude() = 0;
 
-    private:
+    protected:
         const FloatType m_SampleRate;
         FloatType m_Frequency;
         FloatType m_Amplitude;
         std::vector<SineWave<FloatType>> m_vSines;
+    };
+
+    template<typename FloatType>
+    class SquareWave : public ComplexWave<FloatType>
+    {
+    public:
+        static_assert(std::is_same_v<float, FloatType>
+                      || std::is_same_v<double, FloatType>,
+            "SquareWave class template argument must be of type float or double");
+
+    public:
+        SquareWave() = delete;
+        
+        // -------------------------------------------------------------------------------
+        // Constructor. Initialises m_SampleRate and the number of harmonics, and can
+        // optionally be used to set m_Frequency and m_Amplitude.
+        //
+        // Arguments:
+        //     _sampleRate    - audio sample rate in Hz
+        //     _uNumHarmonics - number of sine waves used to create the square wave
+        //     _frequency     - frequency of sine tone produced
+        //     _amplitude     - amplitude of sine tone produced
+        // -------------------------------------------------------------------------------
+        SquareWave(FloatType _sampleRate,
+                   FloatType _frequency = 0.0,
+                   FloatType _amplitude = 1.0,
+                   size_t _uNumHarmonics = 10) :
+            ComplexWave<FloatType>(_sampleRate,
+                        _frequency,
+                        _amplitude,
+                        _uNumHarmonics)
+        {
+            SetNumHarmonics(_uNumHarmonics);
+        };
+
+    public:
+        // -------------------------------------------------------------------------------
+        // Sets the frequency for the fundamental and each harmonic. For a square wave
+        // this is odd harmonics of the fundamental frequency. The fundamental is set, and
+        // then the remaining harmonics are looped through.
+        //
+        // Arguments:
+        //     _frequency  - fundamental frequency of square wave produced
+        //
+        // Returns:
+        //     void
+        // -------------------------------------------------------------------------------
+        void SetFrequency(const FloatType _frequency) override
+        {
+            if (this->m_vSines.empty()) return;
+
+            this->m_vSines.front().SetFrequency(_frequency);
+
+            FloatType prevFrequency{ _frequency };
+
+            for (auto it{ this->m_vSines.begin() + 1 }; it != this->m_vSines.end(); ++it)
+            {
+                it->SetFrequency(prevFrequency + 2 * _frequency);
+                prevFrequency = it->GetFrequency();
+            }
+        }
+
+        void SetAmplitude() override
+        {
+            for (FloatType i{ 0 }; i < this->m_vSines.size(); ++i)
+                this->m_vSines.at(i).SetAmplitude(this->m_Amplitude / (1 + (i * 2)));
+        }
+
+        void SetNumHarmonics(size_t _uNumHarmonics)
+        {
+            const size_t uNumTones{ _uNumHarmonics + 1 };
+            const size_t uOldSize{ this->m_vSines.size() };
+            this->m_vSines.resize(uNumTones, this->m_SampleRate);
+
+            if (uNumTones > uOldSize)
+            {
+                SetAmplitude();
+                SetFrequency(this->m_Frequency);
+            }
+        }
     };
 
 }
